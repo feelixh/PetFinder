@@ -10,6 +10,9 @@
 
 #define RXD 16
 #define TXD 17
+int porta = 15;
+
+
 
 TinyGPS GPS;  
 TinyGPSPlus gps;   
@@ -19,6 +22,9 @@ unsigned long data, hora;
 unsigned short sat;
 const char* ssid = "yourNetworkName";
 const char* password =  "yourNetworkPassword";
+void piscaLed(int pinoPorta);
+
+
 
 // Definicacao de constantes
 const int csPin = 5;         // Chip Select (Slave Select do protocolo SPI) do modulo Lora
@@ -63,87 +69,24 @@ void setup()
  
   Serial.println(" Modulo LoRa iniciado com sucesso!!!");
   Serial.println("Setup Completado!");
+
+  
+pinMode(porta, OUTPUT);
+digitalWrite(porta, LOW);
+}
+
+
+void piscaLed(int pinoPorta){
+  digitalWrite(pinoPorta, HIGH);
+  delay (500);
+  digitalWrite(pinoPorta, LOW);
 }
  
 // Loop do microcontrolador - Operacoes de comunicacao LoRa
 void loop(){
-   while (Serial2.available()) {    
-     gps.encode(Serial2.read());     
-  }
-  
-  if (gps.altitude.isUpdated()){
-      Serial.print("LATITUDE= "); Serial.println(gps.location.lat(), 6);
-      Serial.print("LONGITUDE= "); Serial.println(gps.location.lng(), 6);
-      Serial.print("ALTITUDE EM METROS= "); Serial.println(gps.altitude.meters());
-      Serial.print("DATA= "); Serial.print(gps.date.day()); Serial.print("/"); Serial.print(gps.date.month()); Serial.print("/"); Serial.println(gps.date.year());
-      Serial.print("HORA= "); Serial.print(gps.time.hour()); Serial.print(":"); Serial.print(gps.time.minute()); Serial.print(":"); Serial.println(gps.time.second());
-      Serial.print("VELOCIDADE KM/H= "); Serial.println(gps.speed.kmph());
-      Serial.print("SATELITES= "); Serial.println(gps.satellites.value());
-      Serial.println();
-
-      Serial.println(String(gps.date.day())+String(gps.date.month())+String(gps.date.year()));
+ 
 
 
-     }
-    
-
-
-    
-    /*
-     * tinygps
-     * if (GPS.encode(Serial2.read())) {
- 
-      //Hora e data
-      GPS.get_datetime(&data, &hora);
-      
-      Serial.print("--");
-      Serial.print(hora / 1000000);
-      Serial.print(":");
-      Serial.print((hora % 1000000) / 10000);
-      Serial.print(":");
-      Serial.print((hora % 10000) / 100);
-      Serial.print("--");
- 
-      Serial.print(data / 10000);
-      Serial.print("/");
-      Serial.print((data % 10000) / 100);
-      Serial.print("/");
-      Serial.print(data % 100);
-      Serial.println("--");
-      
-      //latitude e longitude
-      GPS.f_get_position(&lat, &lon);
- 
-      Serial.print("Latitude: ");
-      Serial.println(lat, 6);
-      Serial.print("Longitude: ");
-      Serial.println(lon, 6);
- 
-      //velocidade
-      vel = GPS.f_speed_kmph();
- 
-      Serial.print("Velocidade: ");
-      Serial.println(vel);
- 
-      //Satelites
-      sat = GPS.satellites();
- 
-      if (sat != TinyGPS::GPS_INVALID_SATELLITES) {
-        Serial.print("Satelites: ");
-        Serial.println(sat);
-      }
-      
-      Serial.println("");
-    }*/
-
-    
-  // verifica se temos o intervalo de tempo para enviar uma mensagem
-  if (millis() - lastSendTime > interval){
-    String mensagem = " Ola mundo! :O ";    // Definicao da mensagem 
-    sendMessage(mensagem);
-    Serial.println("Enviando " + mensagem);
-    lastSendTime = millis();            // Timestamp da ultima mensagem
-  }
  
   // parse for a packet, and call onReceive with the result:
   onReceive(LoRa.parsePacket());
@@ -153,6 +96,19 @@ void loop(){
 void sendMessage(String outgoing){
   LoRa.beginPacket();                   // Inicia o pacote da mensagem
   LoRa.write(destination);              // Adiciona o endereco de destino
+  LoRa.write(localAddress);             // Adiciona o endereco do remetente
+  LoRa.write(msgCount);                 // Contador da mensagem
+  LoRa.write(outgoing.length());        // Tamanho da mensagem em bytes
+  LoRa.print(outgoing);                 // Vetor da mensagem 
+  LoRa.endPacket();                     // Finaliza o pacote e envia
+  msgCount++;                           // Contador do numero de mensagnes enviadas
+}
+
+
+// Funcao que envia uma mensagem LoRa
+void sendOk(String outgoing, byte destino){
+  LoRa.beginPacket();                   // Inicia o pacote da mensagem
+  LoRa.write(destino);              // Adiciona o endereco de destino
   LoRa.write(localAddress);             // Adiciona o endereco do remetente
   LoRa.write(msgCount);                 // Contador da mensagem
   LoRa.write(outgoing.length());        // Tamanho da mensagem em bytes
@@ -200,7 +156,9 @@ void onReceive(int packetSize){
   Serial.println("Mensagem: " + incoming);
   Serial.println("RSSI: " + String(LoRa.packetRssi()));
   Serial.println("Snr: " + String(LoRa.packetSnr()));
+  sendOk("OK, Gatway 0xBB recebeu a mensagem!", sender);
   Serial.println();
+  piscaLed(porta);
 }
 
 void enviaServidor(String msg){
