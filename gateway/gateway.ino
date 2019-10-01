@@ -4,17 +4,12 @@
 #include <LoRa.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
-#include <HardwareSerial.h>
-#include<TinyGPS.h> 
 #include <TinyGPS++.h>
 
 #define RXD 16
 #define TXD 17
 int porta = 15;
 
-
-
-TinyGPS GPS;  
 TinyGPSPlus gps;   
                   
 float lat, lon, vel;
@@ -34,7 +29,6 @@ const int irqPin = 4;         // Pino DI0
 String outgoing;              // outgoing message
  
 byte localAddress = 0xBB;     // Endereco deste dispositivo LoRa
-byte msgCount = 0;            // Contador de mensagens enviadas
 byte destination = 0xFF;      // Endereco do dispositivo para enviar a mensagem (0xFF envia para todos devices)
 long lastSendTime = 0;        // TimeStamp da ultima mensagem enviada
 int interval = 5000;          // Intervalo em ms no envio das mensagens (inicial 5s)
@@ -84,10 +78,6 @@ void piscaLed(int pinoPorta){
  
 // Loop do microcontrolador - Operacoes de comunicacao LoRa
 void loop(){
- 
-
-
- 
   // parse for a packet, and call onReceive with the result:
   onReceive(LoRa.parsePacket());
 }
@@ -97,11 +87,9 @@ void sendMessage(String outgoing){
   LoRa.beginPacket();                   // Inicia o pacote da mensagem
   LoRa.write(destination);              // Adiciona o endereco de destino
   LoRa.write(localAddress);             // Adiciona o endereco do remetente
-  LoRa.write(msgCount);                 // Contador da mensagem
   LoRa.write(outgoing.length());        // Tamanho da mensagem em bytes
   LoRa.print(outgoing);                 // Vetor da mensagem 
   LoRa.endPacket();                     // Finaliza o pacote e envia
-  msgCount++;                           // Contador do numero de mensagnes enviadas
 }
 
 
@@ -110,11 +98,9 @@ void sendOk(String outgoing, byte destino){
   LoRa.beginPacket();                   // Inicia o pacote da mensagem
   LoRa.write(destino);              // Adiciona o endereco de destino
   LoRa.write(localAddress);             // Adiciona o endereco do remetente
-  LoRa.write(msgCount);                 // Contador da mensagem
   LoRa.write(outgoing.length());        // Tamanho da mensagem em bytes
   LoRa.print(outgoing);                 // Vetor da mensagem 
   LoRa.endPacket();                     // Finaliza o pacote e envia
-  msgCount++;                           // Contador do numero de mensagnes enviadas
 }
  
 // Funcao para receber mensagem 
@@ -124,7 +110,6 @@ void onReceive(int packetSize){
   // Leu um pacote, vamos decodificar? 
   int recipient = LoRa.read();          // Endereco de quem ta recebendo
   byte sender = LoRa.read();            // Endereco do remetente
-  byte incomingMsgId = LoRa.read();     // Mensagem
   byte incomingLength = LoRa.read();    // Tamanho da mensagem
  
   String incoming = "";
@@ -151,8 +136,6 @@ void onReceive(int packetSize){
   // Caso a mensagem seja para este dispositivo, imprime os detalhes
   Serial.println("Recebido do dispositivo: 0x" + String(sender, HEX));
   Serial.println("Enviado para: 0x" + String(recipient, HEX));
-  Serial.println("ID da mensagem: " + String(incomingMsgId));
-  Serial.println("Tamanho da mensagem: " + String(incomingLength));
   Serial.println("Mensagem: " + incoming);
   Serial.println("RSSI: " + String(LoRa.packetRssi()));
   Serial.println("Snr: " + String(LoRa.packetSnr()));
