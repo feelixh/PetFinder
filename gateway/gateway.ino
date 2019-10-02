@@ -15,10 +15,11 @@ TinyGPSPlus gps;
 float lat, lon, vel;
 unsigned long data, hora;
 unsigned short sat;
-const char* ssid = "yourNetworkName";
-const char* password =  "yourNetworkPassword";
+const char* ssid = "esp";
+const char* password =  "petfinder2019";
 void piscaLed(int pinoPorta);
-
+long lastSendTime = 0;        
+int interval = 5000;         
 
 
 // Definicacao de constantes
@@ -30,8 +31,6 @@ String outgoing;              // outgoing message
  
 byte localAddress = 0xBB;     // Endereco deste dispositivo LoRa
 byte destination = 0xFF;      // Endereco do dispositivo para enviar a mensagem (0xFF envia para todos devices)
-long lastSendTime = 0;        // TimeStamp da ultima mensagem enviada
-int interval = 5000;          // Intervalo em ms no envio das mensagens (inicial 5s)
  
 // Setup do Microcontrolador
 void setup() 
@@ -41,14 +40,14 @@ void setup()
   Serial2.begin(9600 ,SERIAL_8N1, RXD, TXD);                  
   while (!Serial);
   
-  /*WiFi.begin(ssid, password); 
+  WiFi.begin(ssid, password); 
    
   while (WiFi.status() != WL_CONNECTED) { //Check for the connection
     delay(1000);
     Serial.println("Connecting to WiFi..");
   }
  
-  Serial.println("Connected to the WiFi network");*/
+  Serial.println("Connected to the WiFi network");
  
   Serial.println(" Comunicacao LoRa Duplex - Ping&Pong ");
  
@@ -78,6 +77,11 @@ void piscaLed(int pinoPorta){
  
 // Loop do microcontrolador - Operacoes de comunicacao LoRa
 void loop(){
+  if (millis() - lastSendTime > interval) {
+    enviaServidor("{\"msg\": \"OK\"}");
+    lastSendTime = millis();            // Timestamp da ultima mensagem
+  }
+  
   // parse for a packet, and call onReceive with the result:
   onReceive(LoRa.parsePacket());
 }
@@ -148,16 +152,16 @@ void enviaServidor(String msg){
    if(WiFi.status()== WL_CONNECTED){   //Check WiFi connection status
    HTTPClient http;   
  
-   http.begin("http://jsonplaceholder.typicode.com/posts");  //Specify destination for HTTP request
-   http.addHeader("Content-Type", "text/plain");             //Specify content-type header
+   http.begin("http://192.168.137.1/saveinfo.php");  //Specify destination for HTTP request
+   http.addHeader("Content-Type", "text/plain");    
  
-   int httpResponseCode = http.POST("POSTING from ESP32");   //Send the actual POST request
+   int httpResponseCode = http.POST(msg);   //Send the actual POST request
  
    if(httpResponseCode>0){
     String response = http.getString();                       //Get the response to the request
  
-    Serial.println(httpResponseCode);   //Print return code
-    Serial.println(response);           //Print request answer
+    Serial.println("repondecode: "+String(httpResponseCode));   //Print return code
+    Serial.println("responde: "+String(response));           //Print request answer
  
    }else{
     Serial.print("Error on sending POST: ");

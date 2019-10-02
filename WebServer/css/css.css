@@ -1,0 +1,110 @@
+/*
+css/css.css
+*/
+.vermelho {
+	background-color: #F00;
+}
+
+.verde {
+	background-color: #0F0;
+}
+
+.azul {
+	background-color: #00F;
+}
+
+.destaque {
+	background-image: url(../img/destaque1.jpg);
+	background-repeat: no-repeat;
+	height: 530px;
+}
+
+.destaque_texto {
+	position: absolute;
+	right: 0px;
+	bottom: 0px;
+	width: 66%;
+	padding: 10px;
+	font-size: 48px;
+	background-color: rgba(255,255,255, 0.5);
+}
+
+.destaque_texto_menor {
+	font-size: 36px;
+	font-style: italic;
+}
+
+.cont-um, .cont-dois {
+	height: 3px;
+	background-color: #31708F;
+}
+
+.cont-dois {
+	background-color: #A94442;
+}
+
+.icone {
+	margin-top: 20px;
+	font-size: 72px;
+}
+
+.menu-animalia {
+	margin-top: 55px;
+}
+
+.margem-botoes {
+	margin-right: 0px;
+	margin-top: 10px;
+}
+
+.espaco {
+	margin-top: 30px;
+}
+
+.img-l {
+	float:left;
+	margin-right: 10px;
+	margin-bottom: 10px;
+}
+
+.img-r {
+	float:right;
+	margin-left: 10px;
+	margin-bottom: 10px;
+}
+
+ul.sample {
+	list-style-type: inherit;
+	list-style-image: inherit;
+	list-style-position: inside;
+}
+ol.sample {
+	list-style-type: decimal;
+	list-style-position: inside;
+}
+ol.sample ol {
+	list-style-type: decimal;
+}
+ul.sample li { font-style: italic; }
+ol.sample li { font-style: italic; }
+ol.sample ol { font-style: normal; }
+
+.fc-day:hover{
+    background:lightblue;
+}
+.fc-slats, 
+.fc-content-skeleton, 
+.fc-bgevent-skeleton{
+    pointer-events:none;
+}
+.fc-bgevent,
+.fc-event-container{
+    pointer-events:auto;
+}
+
+.tooltip{
+    position:absolute;
+    z-index:10000;
+    background:white;
+    pointer-events:none;
+}
