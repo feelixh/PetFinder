@@ -164,7 +164,9 @@ void loop() {
   onReceive(LoRa.parsePacket());
 }
 
+/*
 // Funcao que envia uma mensagem LoRa
+função foi substituida pelo metodo sendok
 void sendMessage(String outgoing) {
   LoRa.beginPacket();                   // Inicia o pacote da mensagem
   LoRa.write(destination);              // Adiciona o endereco de destino
@@ -173,7 +175,7 @@ void sendMessage(String outgoing) {
   LoRa.print(outgoing);                 // Vetor da mensagem
   LoRa.endPacket();                     // Finaliza o pacote e envia
 }
-
+*/
 
 // Funcao que envia uma mensagem LoRa
 void sendOk(String outgoing, byte destino) {
