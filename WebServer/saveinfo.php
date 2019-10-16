@@ -1,32 +1,34 @@
 <?php
 
 // Verificar se o formulário foi submetido
-if($_POST) {
+if(isset($_POST)) {
 	// Carrega arquivo
-    include("conexao.php");
+   include("conexao.php");
     
-    print_r($_POST);
-    /*
-	// Seleciona do banco de dados
-	$sql = "SELECT *
-			FROM v_usuarios
-			WHERE login = '$email'
-				AND senha = '$senha';";
-	// Executa a SQL
-	$query = mysql_query($sql);
-
+	//print_r($_POST);
+	$sql = "insert into node (id_node, id_server, latitude, longitude, date_node, time_node, date_server, time_server)
+	values ";
+	foreach ($_POST as $dados) { 
+		//print $dados;
+		list ($node_id, $server_id, $lat, $long, $date_node, $time_node) = split (';', $dados);
+		$sql = $sql."('$node_id','$server_id','$lat','$long','$date_node','$time_node',CURDATE(),CURRENT_TIME()), ";
+	 }
+	$sql =(substr($sql,0,strripos($sql,",")));
 	
-	// Se houver registro com as credenciais informadas
-	if(mysql_num_rows($query)) {
-		
+
+	if(mysql_query($sql)) {
+		print("ok");
 		
 	} else {
 		print("err");
     }
-    */
+    
 	// Formulário não submetido
-} else {
+} else if( $_GET){
+print_r($_GET);
+}else {
 	// Redireciona para a página
-	header("Location: 403.php")
+	//header("Location: 403.php");
+	print("err");
 }
 ?>

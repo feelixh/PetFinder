@@ -147,7 +147,7 @@ String printDateTime(TinyGPSDate &d, TinyGPSTime &t)
   else
   {
     char sz[32];
-    sprintf(sz, "%02d/%02d/%02d;", d.month(), d.day(), d.year());
+    sprintf(sz, "%02d/%02d/%02d;", d.year(), d.month(), d.day());
     dateTime = String(sz);
     char sv[32];
     sprintf(sv, "%02d:%02d:%02d", t.hour(), t.minute(), t.second());

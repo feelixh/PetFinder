@@ -16,9 +16,9 @@ TaskHandle_t Task1;
 TaskHandle_t Task2;
 
 String fifo[256];
-int fifo_tail;
-int fifo_head;
-int fifo_n_data;
+volatile int fifo_tail;
+volatile int fifo_head;
+volatile int fifo_n_data;
 
 #define FIFO_MAX 256;
 
@@ -114,8 +114,6 @@ void piscaLed(int pinoPorta) {
 }
 
 
-
-//Task1code: blinks an LED every 1000 ms
 void Task1code( void * pvParameters ) {
   Serial.print("Task1 running on core ");
   Serial.println(xPortGetCoreID());
@@ -123,15 +121,24 @@ void Task1code( void * pvParameters ) {
   for (;;) {
 
     delay(1000);
-   
-    if (fifo_data_isavailable()) {
-       Serial.print("data retirada? ");
-      Serial.println(String(fifo_pull()));
+   if(fifo_n_data>=5){
+    String post ="";
+    int msg = 0;
+    while(fifo_n_data!=0){
+    post += String(msg)+"="+fifo_pull()+"&";
+    msg++;
+      
     }
+    Serial.print("data post: ");
+      Serial.println(post.substring(0,post.lastIndexOf("&")));
+      enviaServidor(post.substring(0,post.lastIndexOf("&")));
+      
+   }
+    
   }
 }
 
-//Task2code: blinks an LED every 700 ms
+
 void Task2code( void * pvParameters ) {
   Serial.print("Task2 running on core ");
   Serial.println(xPortGetCoreID());
@@ -211,7 +218,7 @@ void onReceive(int packetSize) {
   Serial.println("Mensagem: " + incoming);
   Serial.println("RSSI: " + String(LoRa.packetRssi()));
   Serial.println("Snr: " + String(LoRa.packetSnr()));
-  fifo_push("id:0x"+String(sender, HEX)+";"+incoming);
+  fifo_push("0x"+String(sender, HEX)+";0x"+String(localAddress,HEX)+";"+incoming);
   sendOk("OK, Gatway 0xBB recebeu a mensagem!", sender);
   Serial.println();
   piscaLed(porta);
@@ -229,8 +236,8 @@ void enviaServidor(String msg) {
     if (httpResponseCode > 0) {
       String response = http.getString();                       //Get the response to the request
 
-      Serial.println("repondecode: " + String(httpResponseCode)); //Print return code
-      Serial.println("responde: " + String(response));         //Print request answer
+      Serial.println("reponsecode: " + String(httpResponseCode)); //Print return code
+      Serial.println("response: " + String(response));         //Print request answer
 
     } else {
       Serial.print("Error on sending POST: ");
@@ -241,7 +248,6 @@ void enviaServidor(String msg) {
   } else {
     Serial.println("Error in WiFi connection");
   }
-  //delay(10000);  //Send a request every 10 seconds
 }
 
 int fifo_data_isavailable() {
