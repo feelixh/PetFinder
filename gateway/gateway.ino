@@ -8,6 +8,8 @@
 
 #define RXD 16
 #define TXD 17
+
+#define maxToSent 5
 int porta = 15;
 
 TinyGPSPlus gps;
@@ -121,20 +123,25 @@ void Task1code( void * pvParameters ) {
   for (;;) {
 
     delay(1000);
-   if(fifo_n_data>=5){
-    String post ="";
-    int msg = 0;
-    while(fifo_n_data!=0){
-    post += String(msg)+"="+fifo_pull()+"&";
-    msg++;
-      
+    if (fifo_n_data >= maxToSent) {
+      String post = "";
+      int msg = 0;
+      while (fifo_n_data != 0) {
+        post += String(msg) + "=" + fifo_pull() + "&";
+        msg++;
+
+      }
+      Serial.print("data post: ");
+      Serial.println(post.substring(0, post.lastIndexOf("&")));
+      if (enviaServidor(post.substring(0, post.lastIndexOf("&")))) {
+        Serial.println("Enviado com sucesso para o banco de dados!");
+      } else {
+        //tratar exceção aqui
+        Serial.println("Erro ao enviar para o banco!");
+      }
+
     }
-    Serial.print("data post: ");
-      Serial.println(post.substring(0,post.lastIndexOf("&")));
-      enviaServidor(post.substring(0,post.lastIndexOf("&")));
-      
-   }
-    
+
   }
 }
 
@@ -142,45 +149,40 @@ void Task1code( void * pvParameters ) {
 void Task2code( void * pvParameters ) {
   Serial.print("Task2 running on core ");
   Serial.println(xPortGetCoreID());
-  int op = 500;
   for (;;) {
-    op++;
-    delay(600);
-    //Serial.println("inserindo:  " + String(op));
-    //fifo_push(String(op));
+
+    // parse for a packet, and call onReceive with the result:
+    onReceive(LoRa.parsePacket());
   }
 }
 
 
-
-// Loop do microcontrolador - Operacoes de comunicacao LoRa
 void loop() {
-  if (millis() - lastSendTime > interval) {
+  /*if (millis() - lastSendTime > interval) {
     //enviaServidor("parameter=value&also=another");
     lastSendTime = millis();            // Timestamp da ultima mensagem
-  }
+    }
+  */
 
-  // parse for a packet, and call onReceive with the result:
-  onReceive(LoRa.parsePacket());
 }
 
 /*
-// Funcao que envia uma mensagem LoRa
-função foi substituida pelo metodo sendok
-void sendMessage(String outgoing) {
+  // Funcao que envia uma mensagem LoRa
+  função foi substituida pelo metodo sendok
+  void sendMessage(String outgoing) {
   LoRa.beginPacket();                   // Inicia o pacote da mensagem
   LoRa.write(destination);              // Adiciona o endereco de destino
   LoRa.write(localAddress);             // Adiciona o endereco do remetente
   LoRa.write(outgoing.length());        // Tamanho da mensagem em bytes
   LoRa.print(outgoing);                 // Vetor da mensagem
   LoRa.endPacket();                     // Finaliza o pacote e envia
-}
+  }
 */
 
 // Funcao que envia uma mensagem LoRa
 void sendOk(String outgoing, byte destino) {
   LoRa.beginPacket();                   // Inicia o pacote da mensagem
-  LoRa.write(destino);              // Adiciona o endereco de destino
+  LoRa.write(destino);                  // Adiciona o endereco de destino
   LoRa.write(localAddress);             // Adiciona o endereco do remetente
   LoRa.write(outgoing.length());        // Tamanho da mensagem em bytes
   LoRa.print(outgoing);                 // Vetor da mensagem
@@ -220,13 +222,14 @@ void onReceive(int packetSize) {
   Serial.println("Mensagem: " + incoming);
   Serial.println("RSSI: " + String(LoRa.packetRssi()));
   Serial.println("Snr: " + String(LoRa.packetSnr()));
-  fifo_push("0x"+String(sender, HEX)+";0x"+String(localAddress,HEX)+";"+incoming);
+  fifo_push("0x" + String(sender, HEX) + ";0x" + String(localAddress, HEX) + ";" + incoming);
   sendOk("OK, Gatway 0xBB recebeu a mensagem!", sender);
   Serial.println();
   piscaLed(porta);
 }
 
-void enviaServidor(String msg) {
+boolean enviaServidor(String msg) {
+  boolean res = false;
   if (WiFi.status() == WL_CONNECTED) { //Check WiFi connection status
     HTTPClient http;
 
@@ -240,16 +243,24 @@ void enviaServidor(String msg) {
 
       Serial.println("reponsecode: " + String(httpResponseCode)); //Print return code
       Serial.println("response: " + String(response));         //Print request answer
+      if (String(response) == "ok") {
+        res = true;
+      } else if (String(response) == "err") {
+        res = false;
+      }
 
     } else {
       Serial.print("Error on sending POST: ");
       Serial.println(httpResponseCode);
+      res = false;
     }
     http.end();  //Free resources
 
   } else {
     Serial.println("Error in WiFi connection");
+    res = false;
   }
+  return res;
 }
 
 int fifo_data_isavailable() {
@@ -270,33 +281,32 @@ int fifo_data_isfull() {
 }
 
 int fifo_push(String data) {
-    if (!fifo_data_isfull())  {
-      fifo[fifo_head] = data;
-      if (fifo_head < 255)    {
-        fifo_head ++;
-      }    else    {
-        fifo_head = 0;
-      }
-
-      fifo_n_data ++;
-      return 1;
-    }  else  {
-      return 0;
+  if (!fifo_data_isfull())  {
+    fifo[fifo_head] = data;
+    if (fifo_head < 255)    {
+      fifo_head ++;
+    }    else    {
+      fifo_head = 0;
     }
 
+    fifo_n_data ++;
+    return 1;
+  }  else  {
+    return 0;
   }
+}
 
 String fifo_pull(void) {
-    String data;
-    if (fifo_data_isavailable())  {
-      data = fifo[fifo_tail];
-      if (fifo_tail < 255)    {
-        fifo_tail ++;
-      }    else    {
-        fifo_tail = 0;
-      }
-      fifo_n_data --;
-      return data;
+  String data;
+  if (fifo_data_isavailable())  {
+    data = fifo[fifo_tail];
+    if (fifo_tail < 255)    {
+      fifo_tail ++;
+    }    else    {
+      fifo_tail = 0;
     }
-    return "-1";
+    fifo_n_data --;
+    return data;
   }
+  return "-1";
+}

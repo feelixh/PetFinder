@@ -67,12 +67,9 @@ void loop() { // INÍCIO LOOP
   // verifica se temos o intervalo de tempo para enviar uma mensagem
   if (millis() - lastSendTime > interval){
     //String mensagem = "Oi, sou o node 1!";    // Definicao da mensagem 
-    if(String(gps.location.lat(),3).toFloat()!=0.000){
-      String mensagem = String(gps.location.lat(),6)+";"+String(gps.location.lng(),6) + ";" + printDateTime(gps.date, gps.time);
+    String mensagem = String(gps.location.lat(),6)+";"+String(gps.location.lng(),6) + ";" + printDateTime(gps.date, gps.time);
     Serial.println("Enviando " + mensagem);
-    sendMessage(mensagem);      
-    }
-    
+    sendMessage(mensagem);
     lastSendTime = millis();            // Timestamp da ultima mensagem
   
   }
@@ -122,7 +119,7 @@ void onReceive(int packetSize){
   }
  
   // if the recipient isn't this device or broadcast,
-  if (recipient != localAddress && recipient != 0xFF)
+  if (recipient != localAddress && recipient != 0xCC)
   {
     Serial.println("This message is not for me.");
     return;                             // skip rest of function
