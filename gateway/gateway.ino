@@ -17,12 +17,13 @@ TinyGPSPlus gps;
 TaskHandle_t Task1;
 TaskHandle_t Task2;
 
-String fifo[256];
+#define FIFO_MAX 256
+String fifo[FIFO_MAX];
 volatile int fifo_tail;
 volatile int fifo_head;
 volatile int fifo_n_data;
+String bpFifo[FIFO_MAX];
 
-#define FIFO_MAX 256;
 
 int fifo_data_isavailable();
 int fifo_data_isfull();
@@ -50,8 +51,7 @@ byte localAddress = 0xBB;     // Endereco deste dispositivo LoRa
 byte destination = 0xFF;      // Endereco do dispositivo para enviar a mensagem (0xFF envia para todos devices)
 
 // Setup do Microcontrolador
-void setup()
-{
+void setup(){
   // inicializacao da serial
   Serial.begin(115200);
   Serial2.begin(9600 , SERIAL_8N1, RXD, TXD);
@@ -63,10 +63,7 @@ void setup()
     delay(1000);
     Serial.println("Connecting to WiFi..");
   }
-
   Serial.println("Connected to the WiFi network");
-
-  Serial.println(" Comunicacao LoRa Duplex - Ping&Pong ");
 
   // override the default CS, reset, and IRQ pins (optional)
   LoRa.setPins(csPin, resetPin, irqPin);// set CS, reset, IRQ pin
@@ -78,7 +75,6 @@ void setup()
   }
 
   Serial.println(" Modulo LoRa iniciado com sucesso!!!");
-
 
   //create a task that will be executed in the Task1code() function, with priority 1 and executed on core 0
   xTaskCreatePinnedToCore(
@@ -103,11 +99,9 @@ void setup()
   delay(500);
   Serial.println("Setup Completado!");
 
-
   pinMode(porta, OUTPUT);
   digitalWrite(porta, LOW);
 }
-
 
 void piscaLed(int pinoPorta) {
   digitalWrite(pinoPorta, HIGH);
@@ -115,21 +109,19 @@ void piscaLed(int pinoPorta) {
   digitalWrite(pinoPorta, LOW);
 }
 
-
 void Task1code( void * pvParameters ) {
   Serial.print("Task1 running on core ");
   Serial.println(xPortGetCoreID());
-
   for (;;) {
-
     delay(1000);
     if (fifo_n_data >= maxToSent) {
       String post = "";
       int msg = 0;
       while (fifo_n_data != 0) {
-        post += String(msg) + "=" + fifo_pull() + "&";
+        String ms = fifo_pull();
+        post += String(msg) + "=" + ms + "&";
+        bpFifo[msg] = ms;
         msg++;
-
       }
       Serial.print("data post: ");
       Serial.println(post.substring(0, post.lastIndexOf("&")));
@@ -137,47 +129,35 @@ void Task1code( void * pvParameters ) {
         Serial.println("Enviado com sucesso para o banco de dados!");
       } else {
         //tratar exceção aqui
+        for (int i = 0; i < FIFO_MAX; i++) {
+          if (bpFifo[i].length() != 0) {
+            fifo_push(bpFifo[i]);
+            bpFifo[i] = "";
+          } else {
+            break;
+          }
+        }
         Serial.println("Erro ao enviar para o banco!");
       }
-
     }
-
   }
 }
-
 
 void Task2code( void * pvParameters ) {
   Serial.print("Task2 running on core ");
   Serial.println(xPortGetCoreID());
   for (;;) {
-
     // parse for a packet, and call onReceive with the result:
     onReceive(LoRa.parsePacket());
   }
 }
 
-
 void loop() {
   /*if (millis() - lastSendTime > interval) {
-    //enviaServidor("parameter=value&also=another");
     lastSendTime = millis();            // Timestamp da ultima mensagem
     }
   */
-
 }
-
-/*
-  // Funcao que envia uma mensagem LoRa
-  função foi substituida pelo metodo sendok
-  void sendMessage(String outgoing) {
-  LoRa.beginPacket();                   // Inicia o pacote da mensagem
-  LoRa.write(destination);              // Adiciona o endereco de destino
-  LoRa.write(localAddress);             // Adiciona o endereco do remetente
-  LoRa.write(outgoing.length());        // Tamanho da mensagem em bytes
-  LoRa.print(outgoing);                 // Vetor da mensagem
-  LoRa.endPacket();                     // Finaliza o pacote e envia
-  }
-*/
 
 // Funcao que envia uma mensagem LoRa
 void sendOk(String outgoing, byte destino) {
@@ -203,19 +183,16 @@ void onReceive(int packetSize) {
   while (LoRa.available())  {
     incoming += (char)LoRa.read();
   }
-
   if (incomingLength != incoming.length())  {
     // check length for error
     Serial.println("erro!: o tamanho da mensagem nao condiz com o conteudo!");
     return;
   }
-
   // if the recipient isn't this device or broadcast,
   if (recipient != localAddress && recipient != 0xFF)  {
     Serial.println("This message is not for me.");
     return;                             // skip rest of function
   }
-
   // Caso a mensagem seja para este dispositivo, imprime os detalhes
   Serial.println("Recebido do dispositivo: 0x" + String(sender, HEX));
   Serial.println("Enviado para: 0x" + String(recipient, HEX));
@@ -232,15 +209,11 @@ boolean enviaServidor(String msg) {
   boolean res = false;
   if (WiFi.status() == WL_CONNECTED) { //Check WiFi connection status
     HTTPClient http;
-
     http.begin("http://192.168.137.1/saveinfo.php");  //Specify destination for HTTP request
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-
     int httpResponseCode = http.POST(msg);   //Send the actual POST request
-
     if (httpResponseCode > 0) {
       String response = http.getString();                       //Get the response to the request
-
       Serial.println("reponsecode: " + String(httpResponseCode)); //Print return code
       Serial.println("response: " + String(response));         //Print request answer
       if (String(response) == "ok") {
@@ -248,16 +221,20 @@ boolean enviaServidor(String msg) {
       } else if (String(response) == "err") {
         res = false;
       }
-
     } else {
       Serial.print("Error on sending POST: ");
       Serial.println(httpResponseCode);
       res = false;
     }
     http.end();  //Free resources
-
   } else {
-    Serial.println("Error in WiFi connection");
+    WiFi.begin(ssid, password);
+    delay(200);
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.println("Connected to the WiFi network");
+    } else {
+      Serial.println("Error in WiFi connection");
+    }
     res = false;
   }
   return res;
@@ -269,11 +246,10 @@ int fifo_data_isavailable() {
   }  else  {
     return 0;
   }
-
 }
 
 int fifo_data_isfull() {
-  if (fifo_n_data < 256) {
+  if (fifo_n_data < FIFO_MAX) {
     return 0;
   } else {
     return 1;
@@ -283,12 +259,11 @@ int fifo_data_isfull() {
 int fifo_push(String data) {
   if (!fifo_data_isfull())  {
     fifo[fifo_head] = data;
-    if (fifo_head < 255)    {
+    if (fifo_head < FIFO_MAX -1)    {
       fifo_head ++;
     }    else    {
       fifo_head = 0;
     }
-
     fifo_n_data ++;
     return 1;
   }  else  {
@@ -300,7 +275,7 @@ String fifo_pull(void) {
   String data;
   if (fifo_data_isavailable())  {
     data = fifo[fifo_tail];
-    if (fifo_tail < 255)    {
+    if (fifo_tail < FIFO_MAX -1)    {
       fifo_tail ++;
     }    else    {
       fifo_tail = 0;
