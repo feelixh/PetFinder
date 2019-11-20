@@ -17,7 +17,7 @@ TinyGPSPlus gps;
 TaskHandle_t Task1;
 TaskHandle_t Task2;
 
-#define FIFO_MAX 256
+#define FIFO_MAX 512
 String fifo[FIFO_MAX];
 volatile int fifo_tail;
 volatile int fifo_head;
@@ -51,7 +51,7 @@ byte localAddress = 0xBB;     // Endereco deste dispositivo LoRa
 byte destination = 0xFF;      // Endereco do dispositivo para enviar a mensagem (0xFF envia para todos devices)
 
 // Setup do Microcontrolador
-void setup(){
+void setup() {
   // inicializacao da serial
   Serial.begin(115200);
   Serial2.begin(9600 , SERIAL_8N1, RXD, TXD);
@@ -199,8 +199,12 @@ void onReceive(int packetSize) {
   Serial.println("Mensagem: " + incoming);
   Serial.println("RSSI: " + String(LoRa.packetRssi()));
   Serial.println("Snr: " + String(LoRa.packetSnr()));
-  fifo_push("0x" + String(sender, HEX) + ";0x" + String(localAddress, HEX) + ";" + incoming);
-  sendOk("OK, Gatway 0xBB recebeu a mensagem!", sender);
+  if (fifo_data_isfull() == 1) {
+    sendOk("Congestionamento!", sender);
+  } else {
+    fifo_push("0x" + String(sender, HEX) + ";0x" + String(localAddress, HEX) + ";" + incoming);
+    sendOk("OK, Gateway 0xBB recebeu a mensagem!", sender);
+  }
   Serial.println();
   piscaLed(porta);
 }
@@ -259,7 +263,7 @@ int fifo_data_isfull() {
 int fifo_push(String data) {
   if (!fifo_data_isfull())  {
     fifo[fifo_head] = data;
-    if (fifo_head < FIFO_MAX -1)    {
+    if (fifo_head < FIFO_MAX - 1)    {
       fifo_head ++;
     }    else    {
       fifo_head = 0;
@@ -275,7 +279,7 @@ String fifo_pull(void) {
   String data;
   if (fifo_data_isavailable())  {
     data = fifo[fifo_tail];
-    if (fifo_tail < FIFO_MAX -1)    {
+    if (fifo_tail < FIFO_MAX - 1)    {
       fifo_tail ++;
     }    else    {
       fifo_tail = 0;
