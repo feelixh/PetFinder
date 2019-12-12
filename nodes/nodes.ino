@@ -21,6 +21,9 @@ unsigned long data, hora;
 unsigned short sat;
 unsigned int counter = 0;
 
+#define ledGPS 33
+#define ledLora 25
+
 TaskHandle_t Task1;
 TaskHandle_t Task2;
 
@@ -36,13 +39,14 @@ byte msgCount = 0;            // Contador de mensagens enviadas
 byte destination = 0xBB;      // Endereco do dispositivo para enviar a mensagem (0xFF envia para todos devices)
 long lastSendTime = 0;        // TimeStamp da ultima mensagem enviada
 int interval = 5000;          // Intervalo em ms no envio das mensagens (inicial 5s)
-
+void piscaLed(int pinoPorta);
 
 void setup() { // INÍCIO SETUP
 
   Serial.begin(115200); // Definição velocidade (Bauds) de comunicação do Serial ESP32
   Serial2.begin(9600 , SERIAL_8N1, RXD, TXD); // Definição velocidade (Bauds) de comunicação do Serial GPS
-
+  pinMode(ledGPS, OUTPUT);
+  pinMode(ledLora, OUTPUT);
   Serial.println(" Comunicacao LoRa - Sistemas Embarcados e Tempo Real");
 
   // override the default CS, reset, and IRQ pins (optional)
@@ -93,6 +97,7 @@ void Task1code( void * pvParameters ) {
     // verifica se temos o intervalo de tempo para enviar uma mensagem
     if (millis() - lastSendTime > interval) {
       if (gps.location.isValid() && gps.location.isUpdated() && TinyGPSPlus::distanceBetween(gps.location.lat(), gps.location.lng(), 0.00000, 0.00000) > 0.00) {
+        piscaLed(ledGPS);
         String mensagem = String(gps.location.lat(), 6) + ";" + String(gps.location.lng(), 6) + ";" + printDateTime(gps.date, gps.time);
         Serial.println("Enviando " + mensagem);
         sendMessage(mensagem);
@@ -173,6 +178,10 @@ void onReceive(int packetSize) {
   Serial.println("Snr: " + String(LoRa.packetSnr()));
   Serial.println();
 
+  if(incoming.indexOf("OK")>-1){
+    piscaLed(ledLora);
+  }
+
 
 }
 String printDateTime(TinyGPSDate &d, TinyGPSTime &t)
@@ -192,4 +201,10 @@ String printDateTime(TinyGPSDate &d, TinyGPSTime &t)
     dateTime += String(sv);
   }
   return dateTime;
+}
+
+void piscaLed(int pinoPorta) {
+  digitalWrite(pinoPorta, HIGH);
+  delay (50);
+  digitalWrite(pinoPorta, LOW);
 }

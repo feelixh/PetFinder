@@ -105,7 +105,7 @@ void setup() {
 
 void piscaLed(int pinoPorta) {
   digitalWrite(pinoPorta, HIGH);
-  delay (500);
+  delay (50);
   digitalWrite(pinoPorta, LOW);
 }
 
